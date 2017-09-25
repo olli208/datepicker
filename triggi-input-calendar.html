@@ -1,0 +1,239 @@
+<dom-module id="triggi-input-calendar">
+    <template>
+        <style include="triggi-base-style">
+            :host {
+                -moz-user-select: none;
+                -ms-user-select: none;
+                -webkit-user-select: none;
+                user-select: none;
+                display: table;
+                padding: 6px 0;
+                box-sizing: border-box;
+                border: 2px solid var(--triggi-blue);
+                font-size: 40px;
+                background-color: var(--triggi-white);
+                border-radius: 6px;
+                width: 100%;
+                text-align: center;
+                
+                margin-top: 10px;
+            }
+            
+            .displayText {
+                min-width: 190px;
+                margin-top: 14px;
+                font-size: var(--triggi-font-size-5);
+            }
+            
+            .year {
+                width: 80px;
+            }
+            
+            .calendar {
+                align-content: center;
+            }
+            
+            .calendarHead {
+                min-width: 100%;
+                background: var(--triggi-blue);
+                color: var(--triggi-white);
+                margin-top: -6px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            
+            th {
+                background: var(--triggi-blue);
+                color: var(--triggi-white);
+                padding: 3px 0;
+                margin: 0;
+                height: 20px;
+            }
+            
+            th,
+            td {
+                min-width: 35px;
+            }
+            
+            td {
+                cursor: crosshair;
+                height: 40px;
+            }
+            
+            iron-icon {
+                cursor: crosshair;
+                box-sizing: border-box;
+            }
+            
+            .monthName {
+                display: flex;
+                width: 100%;
+                justify-content: center;
+            }
+            
+            table {
+                font-size: var(--triggi-font-size-4);
+                width: 295px;
+                margin: 0 auto;
+            }
+            
+            .tdStyle {
+                color: var(--triggi-black);
+            }
+            
+            .tdStyle-currentDay {
+                box-sizing: border-box;
+                /*color: var(--triggi-blue);*/
+                font-weight: 700;
+                border: 2px solid var(--triggi-grey);
+                border-radius: 50%;
+            }
+            
+            .tdStyle-other {
+                color: var(--triggi-white);
+                background: var(--triggi-blue);
+                opacity: 0.4;
+                border-radius: 50%;
+            }
+            
+            .tdStyle-selected {
+                color: var(--triggi-white);
+                background: var(--triggi-blue);
+                border-radius: 50%;
+                border: 0;
+            }
+            
+            .btn {
+                position: relative;
+                height: 50px;
+                width: 50px;
+            }
+        </style>
+
+        <div class="overlay" on-tap="close"></div>
+
+        <div class="calendar">
+            <div class="calendarHead">
+                <div class="monthName">
+                    <div class="btn" on-tap="prevMonth">
+                        <paper-ripple center class="ripple circle"></paper-ripple>
+                        <iron-icon class="icon flex" icon="chevron-left"></iron-icon>
+                    </div>
+
+                    <div class="displayText">[[monthString]]</div>
+
+                    <div class="btn" on-tap="nextMonth">
+                        <paper-ripple center class="ripple circle"></paper-ripple>
+                        <iron-icon class="icon flex" icon="chevron-right"></iron-icon>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <template is="dom-repeat" items="{{weekDay}}">
+                                <th>{{item}}</th>
+                            </template>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+
+            <table>
+                <template is="dom-repeat" items="{{calendarCells}}">
+                    <tr>
+                        <template is="dom-repeat" items="{{item}}">
+                            <td on-tap="selectDate" class$="{{rangeClass(item, date, otherDate)}}">
+                                {{unwrapDateFromDateObject(item)}}
+                            </td>
+                        </template>
+                    </tr>
+                </template>
+            </table>
+            
+        </div>
+        
+
+    </template>
+
+    <script>
+        Polymer({
+            is: 'triggi-input-calendar',
+
+            behaviors: [TriggiCalendarBehavior],
+
+            properties: {
+                date: {
+                    type: Object,
+                    value: new Date(),
+                    observer: 'observeDate',
+                    notify: true
+                },
+                
+                weekDay: {
+                    type: Array,
+                    value: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+                },
+                
+                otherDate: {
+                    type: Object,
+                    value: null,
+                },
+
+                monthString: {
+                    type: String
+                },
+
+                yearString: String,
+
+                displayedMonth: {
+                    type: Object,
+                    value: new Date(),
+                    observer: 'observeMonth'
+                },
+            },
+
+            observeMonth: function (newDate, oldDate) {
+                if ((oldDate === undefined) || (oldDate.getMonth() !== newDate.getMonth()) || (oldDate.getFullYear() !== newDate.getFullYear())) {
+                    this.monthString = this.monthNameFor(newDate.getMonth());
+                    this.calendarCells = this.createCalendarMatrix(this.displayedMonth.getMonth(),
+                        this.displayedMonth.getFullYear());
+                }
+            },
+
+            observeDate: function (newDate, oldDate) {
+                if (this.displayedMonth && newDate) {
+                    if (this.displayedMonth.getMonth() !== newDate.getMonth() || this.displayedMonth.getFullYear() !== newDate.getFullYear()) {
+                        this.displayedMonth = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), 1);
+                    }
+                }
+            },
+
+            // returns all days in month
+            unwrapDateFromDateObject: function (date) {
+                return date.getDate();
+            },
+
+            // select a date
+            selectDate: function (event) {
+                var selectedDate = event.model.item;
+                this.date = selectedDate;
+            },
+
+            nextMonth: function () {
+                this.changeMonth(1);
+            },
+
+            prevMonth: function () {
+                this.changeMonth(-1);
+            },
+
+            changeMonth: function (increment) {
+                var newMonth = new Date(this.displayedMonth.getFullYear(), this.displayedMonth.getMonth() + increment, 1);
+
+                this.displayedMonth = newMonth;
+            },
+        });
+    </script>
+</dom-module>
